@@ -6,7 +6,7 @@ export const findDominantColor = async (imageBuffer: Buffer<ArrayBufferLike>): P
     const r = onePixelBuffer[0]
     const g = onePixelBuffer[1]
     const b = onePixelBuffer[2]
-    if (!r || !g || !b) throw Error("---- failed to find dominant color")
+    if (r === undefined || g === undefined || b === undefined) throw Error("---- failed to find dominant color")
     const rgb: [number, number, number] = [r, g, b]
     return rgb
 }
