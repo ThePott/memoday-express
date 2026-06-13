@@ -39,7 +39,10 @@ imageRouter.post("/", uploadMiddleware, async (req, res) => {
     const [dominantColor, thumbnailBuffer] = await Promise.all([dominantColorPromise, thumbnailBufferPromise])
     console.log({ dominantColor, thumbnailBuffer })
 
-    const filename = original.filename
+    const filename = original.originalname
+    console.log({ filename })
+    if (!filename) throw Error("---- filename empty")
+
     const originalKey = `originals/${filename}`
     const thumbnailKey = `thumbnails/${filename}`
 
