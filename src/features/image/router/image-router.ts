@@ -12,10 +12,11 @@ const upload = multer({ dest: "./uploads/" })
 const imageRouter: Router = express.Router()
 
 imageRouter.get("/", async (_req, res) => {
-    const files = readdirSync("uploads")
-    const sampleImage = readFileSync(`uploads/${files[0]}`)
-    res.contentType("image/jpeg")
-    res.status(200).send(sampleImage)
+    // const files = readdirSync("uploads")
+    // const sampleImage = readFileSync(`uploads/${files[0]}`)
+    // res.contentType("image/jpeg")
+    // res.status(200).send(sampleImage)
+    res.status(200).send("---- good")
 })
 
 const uploadMiddleware = upload.single("image")
