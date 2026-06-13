@@ -1,13 +1,12 @@
 import express, { type Router } from "express"
 import sharp from "sharp"
-import { readdirSync, readFileSync } from "fs"
 import multer from "multer"
 import s3Client from "../../../shared/config/s3-client.js"
 import { PutObjectCommand } from "@aws-sdk/client-s3"
 import { findDominantColor } from "./operations/find-dominant-color.js"
 import { BUCKET_NAME } from "../../../shared/config/env-var.js"
 
-const upload = multer({ dest: "./uploads/" })
+const upload = multer()
 
 const imageRouter: Router = express.Router()
 
@@ -27,6 +26,7 @@ imageRouter.post("/", uploadMiddleware, async (req, res) => {
         return
     }
     const originalBuffer = original.buffer
+    console.log({ originalBuffer })
 
     const dominantColorPromise = findDominantColor(originalBuffer)
     const thumbnailBufferPromise = sharp(originalBuffer)
