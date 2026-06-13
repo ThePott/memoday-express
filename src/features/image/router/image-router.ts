@@ -26,7 +26,6 @@ imageRouter.post("/", uploadMiddleware, async (req, res) => {
         return
     }
     const originalBuffer = original.buffer
-    console.log({ originalBuffer })
 
     const dominantColorPromise = findDominantColor(originalBuffer)
     const thumbnailBufferPromise = sharp(originalBuffer)
@@ -38,6 +37,7 @@ imageRouter.post("/", uploadMiddleware, async (req, res) => {
         .toFormat("jpeg", { quality: 80 })
         .toBuffer()
     const [dominantColor, thumbnailBuffer] = await Promise.all([dominantColorPromise, thumbnailBufferPromise])
+    console.log({ dominantColor, thumbnailBuffer })
 
     const filename = original.filename
     const originalKey = `originals/${filename}`
