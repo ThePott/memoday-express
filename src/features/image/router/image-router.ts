@@ -5,6 +5,11 @@ import s3Client from "../../../shared/config/s3-client.js"
 import { PutObjectCommand } from "@aws-sdk/client-s3"
 import { findDominantColor } from "./operations/find-dominant-color.js"
 import { BUCKET_NAME } from "../../../shared/config/env-var.js"
+import { memory } from "../../../db/schema.js"
+import db from "../../../shared/config/db.js"
+import { convertRgbToHexcode } from "../../../shared/utils/convert-color.js"
+import { makeSerializable } from "../../../shared/utils/make-serializable.js"
+import z from "zod"
 
 const upload = multer()
 
@@ -19,7 +24,19 @@ imageRouter.get("/", async (_req, res) => {
 })
 
 const uploadMiddleware = upload.single("image")
+const postImageReqBodySchema = z.object({
+    date: z.string(),
+    front_message: z.string().nullable(), // TODO: nullish maybe?
+    rear_message: z.string().nullable(), // TODO: nullish maybe?
+})
 imageRouter.post("/", uploadMiddleware, async (req, res) => {
+    const parseResult = postImageReqBodySchema.safeParse(req.body)
+    if (parseResult.error) {
+        res.status(400).json({ code: "INVALID BODY" })
+        return
+    }
+    const { date, front_message, rear_message } = parseResult.data
+
     const original = req.file
     if (!original) {
         res.status(400).json({ message: "---- post memory payload invalid" })
@@ -27,7 +44,7 @@ imageRouter.post("/", uploadMiddleware, async (req, res) => {
     }
     const originalBuffer = original.buffer
 
-    const dominantColorPromise = findDominantColor(originalBuffer)
+    const dominantRgbPromise = findDominantColor(originalBuffer)
     const thumbnailBufferPromise = sharp(originalBuffer)
         .resize({
             width: 200,
@@ -36,8 +53,8 @@ imageRouter.post("/", uploadMiddleware, async (req, res) => {
         })
         .toFormat("jpeg", { quality: 80 })
         .toBuffer()
-    const [dominantColor, thumbnailBuffer] = await Promise.all([dominantColorPromise, thumbnailBufferPromise])
-    console.log({ dominantColor, thumbnailBuffer })
+    const [dominantRgb, thumbnailBuffer] = await Promise.all([dominantRgbPromise, thumbnailBufferPromise])
+    console.log({ dominantColor: dominantRgb, thumbnailBuffer })
 
     const filename = original.originalname
     console.log({ filename })
@@ -64,12 +81,18 @@ imageRouter.post("/", uploadMiddleware, async (req, res) => {
     )
     await Promise.all([originalSendPromise, thumbnailSendPromise])
 
-    // this is for debug
-    const { date, front_message, rear_message } = req.body
+    const dominantHexcode = convertRgbToHexcode(dominantRgb)
 
-    // TODO: I need to store this info to db
-    console.log({ dominantColor, originalKey, thumbnailKey, date, front_message, rear_message })
-    res.status(200).json({ dominantColor, originalKey, thumbnailKey, date, front_message, rear_message })
+    const result = await db.insert(memory).values({
+        date: date.slice(0, 10),
+        dominant_color: dominantHexcode,
+        front_message: front_message,
+        rear_message: rear_message,
+        filename: filename,
+    })
+    const serializable = makeSerializable(result)
+
+    res.status(200).json({ message: "success", serializable })
 })
 
 export default imageRouter
