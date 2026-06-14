@@ -4,6 +4,10 @@ import sharp from "sharp"
 import s3Client from "../../../shared/config/s3-client.js"
 import { readFileSync } from "node:fs"
 import { BUCKET_NAME } from "../../../shared/config/env-var.js"
+import db from "../../../shared/config/db.js"
+import { memory } from "../../../db/schema.js"
+import { convertRgbToHexcode } from "../../../shared/utils/convert-color.js"
+import { makeSerializable } from "../../../shared/utils/make-serializable.js"
 
 const router: Router = express.Router()
 
@@ -57,6 +61,30 @@ router.get("/color", async (_req, res) => {
     console.log({ rgb })
     // dominantColor is [R, G, B] as Uint8
     res.status(200).json({ rgb })
+})
+
+router.get("/store", async (_req, res) => {
+    const result = await db.select().from(memory)
+    const serializable = makeSerializable(result)
+    res.status(200).json({ message: "debug get all", serializable })
+})
+
+router.post("/store", async (_req, res) => {
+    const rgb: [number, number, number] = [61, 26, 41]
+    const hexcode = convertRgbToHexcode(rgb)
+    const result = await db.insert(memory).values({
+        date: "2026-01-01",
+        dominant_color: hexcode,
+        front_message: "my first image",
+        rear_message: "this is so good",
+        filename: "2026-06-13T09_22_19Z__067C6125-A49B-4AEC-BB4E-98C148D9FEC8.jpeg",
+    })
+    res.status(200).json({ message: "debug post memory", result })
+})
+
+router.delete("/store", async (_req, res) => {
+    const result = await db.delete(memory)
+    res.status(200).json({ message: "debug deleted all in store", result })
 })
 
 export default router

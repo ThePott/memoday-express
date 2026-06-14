@@ -66,6 +66,7 @@ imageRouter.post("/", uploadMiddleware, async (req, res) => {
 
     // this is for debug
     const { date, front_message, rear_message } = req.body
+
     // TODO: I need to store this info to db
     console.log({ dominantColor, originalKey, thumbnailKey, date, front_message, rear_message })
     res.status(200).json({ dominantColor, originalKey, thumbnailKey, date, front_message, rear_message })

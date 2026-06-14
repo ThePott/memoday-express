@@ -5,7 +5,6 @@ export const memory = pgTable("memory", {
     date: date({ mode: "string" }).notNull(),
     front_message: varchar(),
     rear_message: varchar(),
-    image_key_original: varchar(),
-    image_key_thumbnail: varchar(),
-    dominant_color: varchar(), // NOTE: HEXCODE
+    filename: varchar().notNull(),
+    dominant_color: varchar().notNull(), // NOTE: HEXCODE
 })
