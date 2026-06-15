@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs"
 import { BUCKET_NAME } from "../../../shared/config/env-var.js"
 import db from "../../../shared/config/db.js"
 import { memory } from "../../../db/schema.js"
-import { convertRgbToHexcode } from "../../../shared/utils/convert-color.js"
+// import { convertRgbToHexcode } from "../../../shared/utils/convert-color.js"
 import { makeSerializable } from "../../../shared/utils/make-serializable.js"
 
 const router: Router = express.Router()
@@ -90,25 +90,25 @@ router.get("/store", async (_req, res) => {
     res.status(200).json({ message: "debug get all", serializable })
 })
 
-router.post("/store", async (_req, res) => {
-    const rgb: [number, number, number] = [61, 26, 41]
-    const hexcode = convertRgbToHexcode(rgb)
-    const result = await db.insert(memory).values({
-        date: "2026-01-01",
-        dominant_color: hexcode,
-        front_message: "my first image",
-        rear_message: "this is so good",
-        filename: "2026-06-13T09_22_19Z__067C6125-A49B-4AEC-BB4E-98C148D9FEC8.jpeg",
-    })
-    res.status(200).json({ message: "debug post memory", result })
-})
+// router.post("/store", async (_req, res) => {
+//     const rgb: [number, number, number] = [61, 26, 41]
+//     const hexcode = convertRgbToHexcode(rgb)
+//     const result = await db.insert(memory).values({
+//         date: "2026-01-01",
+//         dominant_color: hexcode,
+//         front_message: "my first image",
+//         rear_message: "this is so good",
+//         filename: "2026-06-13T09_22_19Z__067C6125-A49B-4AEC-BB4E-98C148D9FEC8.jpeg",
+//     })
+//     res.status(200).json({ message: "debug post memory", result })
+// })
 
 router.delete("/store", async (_req, res) => {
     const result = await db.delete(memory)
     res.status(200).json({ message: "debug deleted all in store", result })
 })
 
-router.post("/presigned-url", async (req, res) => {
+router.post("/presigned-url", async (_req, res) => {
     const presignedUrl =
         "https://memodaybucket-bxolqguccui.t3.storageapi.dev/thumbnails/sample.jpeg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=tid_YI_HajYUZCUoyQeNOxv_pdJprukZmtodjnZMoeLFkJTZQeJkTX%2F20260615%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20260615T012436Z&X-Amz-Expires=180&X-Amz-Signature=1e8c1273d1a1561c98e1caa0571aa4c76ed1d25817735251714f082e77af4615&X-Amz-SignedHeaders=host&x-amz-checksum-crc32=AAAAAA%3D%3D&x-amz-sdk-checksum-algorithm=CRC32&x-id=PutObject"
     const file = readFileSync("./src/features/debug/router/sample.jpeg")
