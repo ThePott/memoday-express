@@ -1,4 +1,4 @@
-import { PutObjectCommand } from "@aws-sdk/client-s3"
+import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3"
 import express, { Router } from "express"
 import sharp from "sharp"
 import s3Client from "../../../shared/config/s3-client.js"
@@ -52,6 +52,27 @@ router.post("/bucket", async (_req, res) => {
 
     res.status(200).send("---- bucket testing")
 })
+router.get("/bucket/:filename", async (req, res) => {
+    const filename = String(req.params.filename)
+
+    const originalPromise = s3Client.send(
+        new GetObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: `originals/${filename}`, // stored under "original/"
+        }),
+    )
+    const thumbnailPromise = s3Client.send(
+        new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: `thumbnails/${filename}`, // stored under "thumbnails/"
+        }),
+    )
+    const [originalResponse, thumbnailResponse] = await Promise.all([originalPromise, thumbnailPromise])
+
+    console.log({ originalResponse, thumbnailResponse })
+
+    res.status(200).send("---- get bucket success")
+})
 
 router.get("/color", async (_req, res) => {
     const originalBuffer = readFileSync("src/features/debug/router/smaple.jpeg")
@@ -85,6 +106,26 @@ router.post("/store", async (_req, res) => {
 router.delete("/store", async (_req, res) => {
     const result = await db.delete(memory)
     res.status(200).json({ message: "debug deleted all in store", result })
+})
+
+router.post("/presigned-url", async (req, res) => {
+    const presignedUrl =
+        "https://memodaybucket-bxolqguccui.t3.storageapi.dev/thumbnails/sample.jpeg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=tid_YI_HajYUZCUoyQeNOxv_pdJprukZmtodjnZMoeLFkJTZQeJkTX%2F20260615%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20260615T012436Z&X-Amz-Expires=180&X-Amz-Signature=1e8c1273d1a1561c98e1caa0571aa4c76ed1d25817735251714f082e77af4615&X-Amz-SignedHeaders=host&x-amz-checksum-crc32=AAAAAA%3D%3D&x-amz-sdk-checksum-algorithm=CRC32&x-id=PutObject"
+    const file = readFileSync("./src/features/debug/router/sample.jpeg")
+    const response = await fetch(presignedUrl, {
+        method: "PUT",
+        body: file,
+        headers: {
+            ContentType: "image/jpeg",
+        },
+    })
+    console.log("---- working?")
+    console.log(response)
+    // ;("https://memodaybucket-bxolqguccui.storage.railway.app/thumbnails/samples.jpeg")
+    // console.log({ response })
+    // const json = await response.json()
+
+    res.status(200).send("---- success, read log")
 })
 
 export default router
