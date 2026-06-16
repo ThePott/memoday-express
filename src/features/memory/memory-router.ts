@@ -2,7 +2,7 @@ import express, { type Router } from "express"
 import { eq } from "drizzle-orm"
 import { createInsertSchema } from "drizzle-zod"
 import s3Client from "../../shared/config/s3-client.js"
-import { GetObjectCommand, PutObjectCommand, type ServiceInputTypes } from "@aws-sdk/client-s3"
+import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3"
 import { BUCKET_NAME } from "../../shared/config/env-var.js"
 import { memory } from "../../db/schema.js"
 import db from "../../shared/config/db.js"
@@ -15,7 +15,8 @@ const PRESIGNED_URL_EXPRIRES_IN = 180 // NOTE: 5 min
 const memoryRouter: Router = express.Router()
 
 // stage 1: presigned url
-memoryRouter.get("/presigned-url/:filename/:method", async (req, res) => {
+memoryRouter.get("/presigned-url/:method/:filename", async (req, res) => {
+    console.log("---- presigned called")
     const schema = z.object({
         filename: z.string().min(1),
         method: z.enum(["get", "put"]),
