@@ -2,35 +2,52 @@ import express, { type Router } from "express"
 import { eq } from "drizzle-orm"
 import { createInsertSchema } from "drizzle-zod"
 import s3Client from "../../shared/config/s3-client.js"
-import { PutObjectCommand } from "@aws-sdk/client-s3"
+import { GetObjectCommand, PutObjectCommand, type ServiceInputTypes } from "@aws-sdk/client-s3"
 import { BUCKET_NAME } from "../../shared/config/env-var.js"
 import { memory } from "../../db/schema.js"
 import db from "../../shared/config/db.js"
 import { makeSerializable } from "../../shared/utils/make-serializable.js"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
+import z from "zod"
 
 const PRESIGNED_URL_EXPRIRES_IN = 180 // NOTE: 5 min
 
 const memoryRouter: Router = express.Router()
 
 // stage 1: presigned url
-memoryRouter.get("/presigned-url/:filename", async (req, res) => {
-    const filename = String(req.params.filename ?? "")
-    if (!filename) {
-        res.status(400).json({ code: "MISSING FILENAME" })
+memoryRouter.get("/presigned-url/:filename/:method", async (req, res) => {
+    const schema = z.object({
+        filename: z.string().min(1),
+        method: z.enum(["get", "put"]),
+    })
+    const parseResult = schema.safeParse({
+        filename: String(req.params.filename ?? ""),
+        method: String(req.params.method ?? ""),
+    })
+    if (parseResult.error) {
+        res.status(400).json({ code: "INVALID FILENAME OR METHOD", error: parseResult.error })
+        return
+    }
+    const { filename, method } = parseResult.data
+
+    const makeCommand = (method: z.infer<typeof schema>["method"], prefix: "originals" | "thumbnails") => {
+        switch (method) {
+            case "get":
+                return new GetObjectCommand({
+                    Bucket: BUCKET_NAME,
+                    Key: `${prefix}/${filename}`,
+                })
+            case "put":
+                return new PutObjectCommand({
+                    Bucket: BUCKET_NAME,
+                    Key: `${prefix}/${filename}`,
+                    ContentType: "image/jpeg",
+                })
+        }
     }
 
-    const originalCommand = new PutObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: `originals/${filename}`,
-        ContentType: "image/jpeg",
-    })
-    const thumbnailCommand = new PutObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: `thumbnails/${filename}`,
-        ContentType: "image/jpeg",
-    })
-
+    const originalCommand = makeCommand(method, "originals")
+    const thumbnailCommand = makeCommand(method, "thumbnails")
     const originalPresignedUrlPromise = getSignedUrl(s3Client, originalCommand, {
         expiresIn: PRESIGNED_URL_EXPRIRES_IN,
     })
