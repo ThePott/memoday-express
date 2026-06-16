@@ -5,7 +5,7 @@
     "main": "./dist/src/server.js",
     "scripts": {
         "build": "tsc",
-        "start": "drizzle-kit migrate && node ./dist/server.js",
+        "start": "drizzle-kit migrate && node ./dist/src/server.js",
         "dev": "tsx watch ./src/server.ts",
         "test": "echo \"Error: no test specified\" && exit 1",
         "prepare": "husky",
