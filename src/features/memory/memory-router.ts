@@ -1,5 +1,5 @@
 import express, { type Router } from "express"
-import { eq } from "drizzle-orm"
+import { eq, gte, lt } from "drizzle-orm"
 import { createInsertSchema } from "drizzle-zod"
 import s3Client from "../../shared/config/s3-client.js"
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3"
@@ -84,10 +84,10 @@ memoryRouter.post("/", async (req, res) => {
     res.status(200).json(serializable)
 })
 
-memoryRouter.get("/:memory_date", async (req, res) => {
-    const memory_date = String(req.params.memory_date)
+memoryRouter.get("/day/:ymd", async (req, res) => {
+    const ymd = String(req.params.ymd)
 
-    const selectResult = await db.select().from(memory).where(eq(memory.date, memory_date))
+    const selectResult = await db.select().from(memory).where(eq(memory.date, ymd))
     if (selectResult.length === 0 || !selectResult[0]) {
         console.log({ error: "MEMORY NOT FOUND BY DATE" })
         res.status(404).json({ code: "MEMORY NOT FOUND BY DATE" })
@@ -96,6 +96,33 @@ memoryRouter.get("/:memory_date", async (req, res) => {
     const result = selectResult[0]
     const serializable = makeSerializable(result)
 
+    res.status(200).json(serializable)
+})
+
+const findMonthStartEnd = (ym: string): [string, string] => {
+    const start = `${ym}-01`
+    const [year, month] = ym.split("-").map(Number)
+    if (!year || !month) {
+        console.log({ error: "---- FAILED FINDING MONTH START END" })
+        throw new Error("---- FAILED FINDING MONTH START END")
+    }
+    const end = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, "0")}-01`
+    return [start, end]
+}
+memoryRouter.get("/month/:ym", async (req, res) => {
+    const ym = String(req.params.ym)
+    const [start, end] = findMonthStartEnd(ym)
+
+    const selectResult = await db
+        .select()
+        .from(memory)
+        .where(gte(memory.date, start) && lt(memory.date, end))
+    if (selectResult.length === 0) {
+        console.log({ error: "MEMORY NOT FOUND BY YYYY-MM" })
+        res.status(404).json({ code: "MEMORY NOT FOUND BY YYYY-MM" })
+        return
+    }
+    const serializable = makeSerializable(selectResult)
     res.status(200).json(serializable)
 })
 
