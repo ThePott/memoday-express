@@ -14,6 +14,22 @@ const PRESIGNED_URL_EXPRIRES_IN = 180 // NOTE: 5 min
 
 const memoryRouter: Router = express.Router()
 
+const MethodSchema = z.enum(["get", "put"])
+const makeCommand = (method: z.infer<typeof MethodSchema>, prefix: "originals" | "thumbnails", filename: string) => {
+    switch (method) {
+        case "get":
+            return new GetObjectCommand({
+                Bucket: BUCKET_NAME,
+                Key: `${prefix}/${filename}`,
+            })
+        case "put":
+            return new PutObjectCommand({
+                Bucket: BUCKET_NAME,
+                Key: `${prefix}/${filename}`,
+                ContentType: "image/jpeg",
+            })
+    }
+}
 // stage 1: presigned url
 memoryRouter.get("/presigned-url/:method/:filename", async (req, res) => {
     console.log("---- presigned called")
@@ -32,7 +48,10 @@ memoryRouter.get("/presigned-url/:method/:filename", async (req, res) => {
     }
     const { filename, method } = parseResult.data
 
-    const makeCommand = (method: z.infer<typeof schema>["method"], prefix: "originals" | "thumbnails") => {
+    const MUST_REPLACE_WITH_GLOBAL_ONE = (
+        method: z.infer<typeof schema>["method"],
+        prefix: "originals" | "thumbnails",
+    ) => {
         switch (method) {
             case "get":
                 return new GetObjectCommand({
@@ -48,8 +67,8 @@ memoryRouter.get("/presigned-url/:method/:filename", async (req, res) => {
         }
     }
 
-    const originalCommand = makeCommand(method, "originals")
-    const thumbnailCommand = makeCommand(method, "thumbnails")
+    const originalCommand = MUST_REPLACE_WITH_GLOBAL_ONE(method, "originals")
+    const thumbnailCommand = MUST_REPLACE_WITH_GLOBAL_ONE(method, "thumbnails")
     const originalPresignedUrlPromise = getSignedUrl(s3Client, originalCommand, {
         expiresIn: PRESIGNED_URL_EXPRIRES_IN,
     })
@@ -110,7 +129,14 @@ const findMonthStartEnd = (ym: string): [string, string] => {
     return [start, end]
 }
 memoryRouter.get("/month/:ym", async (req, res) => {
-    const ym = String(req.params.ym)
+    const ymSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "must be yyyy-mm")
+    const parseResult = ymSchema.safeParse(req.params.ym)
+    if (parseResult.error) {
+        console.log({ error: parseResult.error })
+        res.status(400).json({ code: "INVALID_YM", error: parseResult.error })
+        return
+    }
+    const ym = parseResult.data
     const [start, end] = findMonthStartEnd(ym)
 
     const selectResult = await db
@@ -122,7 +148,12 @@ memoryRouter.get("/month/:ym", async (req, res) => {
         res.status(404).json({ code: "MEMORY NOT FOUND BY YYYY-MM" })
         return
     }
-    const serializable = makeSerializable(selectResult)
+
+    const presignedUrlAttached = selectResult.map((result) => ({
+        ...result,
+        thumbnailPresignedUrl: makeCommand("get", "thumbnails", result.filename),
+    }))
+    const serializable = makeSerializable(presignedUrlAttached)
     res.status(200).json(serializable)
 })
 
