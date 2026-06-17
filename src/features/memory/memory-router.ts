@@ -84,13 +84,13 @@ memoryRouter.post("/", async (req, res) => {
     res.status(200).json(serializable)
 })
 
-memoryRouter.get("/:memory_id", async (req, res) => {
-    const memoryIdInString = String(req.params.memory_id)
-    const memory_id = BigInt(memoryIdInString)
+memoryRouter.get("/:memory_date", async (req, res) => {
+    const memory_date = String(req.params.memory_date)
 
-    const selectResult = await db.select().from(memory).where(eq(memory.id, memory_id))
+    const selectResult = await db.select().from(memory).where(eq(memory.date, memory_date))
     if (selectResult.length === 0 || !selectResult[0]) {
-        res.status(404).json({ code: "MEMORY NOT FOUND BY ID" })
+        console.log({ error: "MEMORY NOT FOUND BY DATE" })
+        res.status(404).json({ code: "MEMORY NOT FOUND BY DATE" })
         return
     }
     const result = selectResult[0]
