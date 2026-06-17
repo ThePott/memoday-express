@@ -149,9 +149,16 @@ memoryRouter.get("/month/:ym", async (req, res) => {
         return
     }
 
-    const presignedUrlAttached = selectResult.map((result) => ({
+    const commandArray = selectResult.map((result) => makeCommand("get", "thumbnails", result.filename))
+    const presignedUrlPromiseArray = commandArray.map((command) =>
+        getSignedUrl(s3Client, command, {
+            expiresIn: PRESIGNED_URL_EXPRIRES_IN,
+        }),
+    )
+    const presignedUrlArray = await Promise.all(presignedUrlPromiseArray)
+    const presignedUrlAttached = selectResult.map((result, index) => ({
         ...result,
-        thumbnailPresignedUrl: makeCommand("get", "thumbnails", result.filename),
+        thumbnailPresignedUrl: presignedUrlArray[index],
     }))
     const serializable = makeSerializable(presignedUrlAttached)
     res.status(200).json(serializable)
