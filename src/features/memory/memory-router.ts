@@ -26,6 +26,7 @@ memoryRouter.get("/presigned-url/:method/:filename", async (req, res) => {
         method: String(req.params.method ?? ""),
     })
     if (parseResult.error) {
+        console.log({ error: parseResult.error })
         res.status(400).json({ code: "INVALID FILENAME OR METHOD", error: parseResult.error })
         return
     }
