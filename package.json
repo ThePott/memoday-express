@@ -5,10 +5,10 @@
     "main": "./dist/src/server.js",
     "scripts": {
         "build": "tsc",
-        "start": "drizzle-kit genma && node ./dist/src/server.js",
         "dev": "tsx watch ./src/server.ts",
         "test": "echo \"Error: no test specified\" && exit 1",
         "prepare": "husky",
+        "start": "drizzle-kit generate && drizzle-kit migrate && node ./dist/src/server.js",
         "genma": "drizzle-kit generate && drizzle-kit migrate"
     },
     "keywords": [],
