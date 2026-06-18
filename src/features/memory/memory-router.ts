@@ -1,6 +1,6 @@
 import express, { type Router } from "express"
 import { eq, gte, lt } from "drizzle-orm"
-import { createInsertSchema } from "drizzle-zod"
+import { createInsertSchema } from "drizzle-orm/zod"
 import s3Client from "../../shared/config/s3-client.js"
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3"
 import { BUCKET_NAME } from "../../shared/config/env-var.js"
