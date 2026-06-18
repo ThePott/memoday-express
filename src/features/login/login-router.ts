@@ -113,7 +113,8 @@ loginRouter.post("/apple/validate", async (req, res) => {
         res.status(401).json({ code: "INVALID_IDENTITY_FROM_JWT" })
         return
     }
-    const token: Token = { appUserIdInString: selectedAppUserIdInString(identity) }
+    const appUserIdInString = await selectedAppUserIdInString(identity)
+    const token: Token = { appUserIdInString }
     const accessToken = jwt.sign(token, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_AGE })
 
     res.status(200).json({ accessToken })
