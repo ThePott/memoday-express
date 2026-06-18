@@ -32,85 +32,34 @@ const makeCommand = (method: z.infer<typeof MethodSchema>, prefix: "originals" |
     }
 }
 
-// TODO: remove this and return presigned url at once
-// memoryRouter.get("/presigned-url/:method/:filename", async (req, res) => {
-//     console.log("---- presigned called")
-//     const schema = z.object({
-//         filename: z.string().min(1),
-//         method: z.enum(["get", "put"]),
-//     })
-//     const parseResult = schema.safeParse({
-//         filename: String(req.params.filename ?? ""),
-//         method: String(req.params.method ?? ""),
-//     })
-//     if (parseResult.error) {
-//         console.log({ error: parseResult.error })
-//         res.status(400).json({ code: "INVALID FILENAME OR METHOD", error: parseResult.error })
-//         return
-//     }
-//     const { filename, method } = parseResult.data
-//
-//     const MUST_REPLACE_WITH_GLOBAL_ONE = (
-//         method: z.infer<typeof schema>["method"],
-//         prefix: "originals" | "thumbnails",
-//     ) => {
-//         switch (method) {
-//             case "get":
-//                 return new GetObjectCommand({
-//                     Bucket: BUCKET_NAME,
-//                     Key: `${prefix}/${filename}`,
-//                 })
-//             case "put":
-//                 return new PutObjectCommand({
-//                     Bucket: BUCKET_NAME,
-//                     Key: `${prefix}/${filename}`,
-//                     ContentType: "image/jpeg",
-//                 })
-//         }
-//     }
-//
-//     const originalCommand = MUST_REPLACE_WITH_GLOBAL_ONE(method, "originals")
-//     const thumbnailCommand = MUST_REPLACE_WITH_GLOBAL_ONE(method, "thumbnails")
-//     const originalPresignedUrlPromise = getSignedUrl(s3Client, originalCommand, {
-//         expiresIn: PRESIGNED_URL_EXPRIRES_IN,
-//     })
-//     const thumbnailPresignedUrlPromise = getSignedUrl(s3Client, thumbnailCommand, {
-//         expiresIn: PRESIGNED_URL_EXPRIRES_IN,
-//     })
-//     const [originalPresignedUrl, thumbnailPresignedUrl] = await Promise.all([
-//         originalPresignedUrlPromise,
-//         thumbnailPresignedUrlPromise,
-//     ])
-//
-//     console.log({ originalPresignedUrl, thumbnailPresignedUrl })
-//
-//     res.status(200).json({ originalPresignedUrl, thumbnailPresignedUrl })
-// })
-// MUST REMOVE ABOVE
-
-// MUST COMBINE THIS AND ABOVE
 memoryRouter.post("/", async (req, res) => {
-    const { app_user_id } = extractAppUserId(req.headers)
-    const schema = createInsertSchema(memory)
-    const parseResult = schema.parse({ ...req.body, app_user_id })
-    const { filename } = parseResult
-    await db.insert(memory).values(parseResult) // NOTE: no need for return
+    try {
+        const { app_user_id } = extractAppUserId(req.headers)
+        const schema = createInsertSchema(memory)
+        console.log({ messedUpBody: req.body })
+        const parseResult = schema.parse({ ...req.body, app_user_id })
+        const { filename } = parseResult
+        await db.insert(memory).values(parseResult) // NOTE: no need for return
 
-    const commandOriginal = makeCommand("put", "originals", filename)
-    const commandThumbnail = makeCommand("put", "thumbnails", filename)
-    const originalPresignedUrlPromise = getSignedUrl(s3Client, commandOriginal, {
-        expiresIn: PRESIGNED_URL_EXPRIRES_IN,
-    })
-    const thumbnailPresignedUrlPromise = getSignedUrl(s3Client, commandThumbnail, {
-        expiresIn: PRESIGNED_URL_EXPRIRES_IN,
-    })
-    const [originalPresignedUrl, thumbnailPresignedUrl] = await Promise.all([
-        originalPresignedUrlPromise,
-        thumbnailPresignedUrlPromise,
-    ])
-    const serializable = makeSerializable({ originalPresignedUrl, thumbnailPresignedUrl })
+        const commandOriginal = makeCommand("put", "originals", filename)
+        const commandThumbnail = makeCommand("put", "thumbnails", filename)
+        const originalPresignedUrlPromise = getSignedUrl(s3Client, commandOriginal, {
+            expiresIn: PRESIGNED_URL_EXPRIRES_IN,
+        })
+        const thumbnailPresignedUrlPromise = getSignedUrl(s3Client, commandThumbnail, {
+            expiresIn: PRESIGNED_URL_EXPRIRES_IN,
+        })
+        const [originalPresignedUrl, thumbnailPresignedUrl] = await Promise.all([
+            originalPresignedUrlPromise,
+            thumbnailPresignedUrlPromise,
+        ])
+        const serializable = makeSerializable({ originalPresignedUrl, thumbnailPresignedUrl })
 
-    res.status(200).json(serializable)
+        res.status(200).json(serializable)
+    } catch (error) {
+        console.log({ error })
+        res.status(500).json({ code: "FUCKEDUP" })
+    }
 })
 
 memoryRouter.get("/day/:ymd", async (req, res) => {
