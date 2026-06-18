@@ -48,7 +48,7 @@ const getMatchingKey = async (decodedJwt: Jwt): Promise<JWK | null> => {
     return matchingKey
 }
 
-const selectedAppUserIdInString = async (identity: string): string => {
+const selectedAppUserIdInString = async (identity: string): Promise<string> => {
     const newUser: z.infer<typeof appUserInsertSchema> = {
         provider: "apple",
         identity: identity,
