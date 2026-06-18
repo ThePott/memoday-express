@@ -8,6 +8,7 @@ import crypto from "node:crypto"
 import { ACCESS_TOKEN_SECRET } from "../../shared/config/env-var.js"
 import db from "../../shared/config/db.js"
 import { app_user, memory } from "../../db/schema.js"
+import type { Token } from "../../shared/utils/decode-jwt-in-headers.js"
 
 const loginRouter: Router = express.Router()
 
@@ -47,6 +48,24 @@ const getMatchingKey = async (decodedJwt: Jwt): Promise<JWK | null> => {
     return matchingKey
 }
 
+const selectedAppUserIdInString = async (identity: string): string => {
+    const newUser: z.infer<typeof appUserInsertSchema> = {
+        provider: "apple",
+        identity: identity,
+    }
+
+    const selectResult = await db
+        .select()
+        .from(app_user)
+        .where(eq(app_user.provider, newUser.provider) && eq(app_user.identity, newUser.identity))
+
+    if (selectResult[0]) return String(selectResult[0].id)
+
+    const insertResult = await db.insert(app_user).values(newUser)
+    console.log({ insertResult })
+
+    throw new Error("---- not handled insert result")
+}
 // TODO: need to throw for errors, then middleware catches it and handle it?
 // Not sure central error management is good
 // it sucks up all error, so error location become vague
@@ -89,32 +108,14 @@ loginRouter.post("/apple/validate", async (req, res) => {
         return
     }
 
-    const appleIdentity = decodedJwt.payload.sub
-    const accessToken = jwt.sign({ provider: "apple", identity: appleIdentity }, ACCESS_TOKEN_SECRET, {
-        expiresIn: ACCESS_TOKEN_AGE,
-    })
-
     const identity = decodedJwt.payload.sub
     if (typeof identity !== "string" || !identity) {
         res.status(401).json({ code: "INVALID_IDENTITY_FROM_JWT" })
         return
     }
-    const newUser: z.infer<typeof appUserInsertSchema> = {
-        provider: "apple",
-        identity: identity,
-    }
+    const token: Token = { appUserIdInString: selectedAppUserIdInString(identity) }
+    const accessToken = jwt.sign(token, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_AGE })
 
-    const selectResult = await db
-        .select()
-        .from(app_user)
-        .where(eq(app_user.provider, newUser.provider) && eq(app_user.identity, newUser.identity))
-
-    if (selectResult.length > 0) {
-        res.status(200).json({ accessToken })
-        return
-    }
-
-    await db.insert(app_user).values(newUser)
     res.status(200).json({ accessToken })
 })
 

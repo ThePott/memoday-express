@@ -1,12 +1,12 @@
 import type { IncomingHttpHeaders } from "http"
 import jwt from "jsonwebtoken"
-import { ACCESS_TOKEN_SECRET } from "./env-var.js"
+import { ACCESS_TOKEN_SECRET } from "../config/env-var.js"
 
-type Token = {
+export type Token = {
     appUserIdInString: string
 }
 
-export type DecodedToken = Token & {
+type DecodedToken = Token & {
     exp: number
     iat: number
 }

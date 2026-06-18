@@ -9,7 +9,7 @@ import db from "../../shared/config/db.js"
 import { makeSerializable } from "../../shared/utils/make-serializable.js"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import z from "zod"
-import { extractAppUserId } from "../../shared/config/decode-jwt-in-headers.js"
+import { extractAppUserId } from "../../shared/utils/decode-jwt-in-headers.js"
 
 const PRESIGNED_URL_EXPRIRES_IN = 180 // NOTE: 5 min
 
