@@ -61,10 +61,11 @@ const selectedAppUserIdInString = async (identity: string): Promise<string> => {
 
     if (selectResult[0]) return String(selectResult[0].id)
 
-    const insertResult = await db.insert(app_user).values(newUser)
-    console.log({ insertResult })
+    const insertResult = await db.insert(app_user).values(newUser).returning()
+    const app_user_id = insertResult[0]?.id
+    if (!app_user_id) throw new Error("---- failed to get id after insertion")
 
-    throw new Error("---- not handled insert result")
+    return String(app_user_id)
 }
 // TODO: need to throw for errors, then middleware catches it and handle it?
 // Not sure central error management is good
