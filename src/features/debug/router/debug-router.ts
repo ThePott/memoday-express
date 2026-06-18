@@ -8,6 +8,8 @@ import db from "../../../shared/config/db.js"
 import { memory } from "../../../db/schema.js"
 // import { convertRgbToHexcode } from "../../../shared/utils/convert-color.js"
 import { makeSerializable } from "../../../shared/utils/make-serializable.js"
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
+import axios from "axios"
 
 const router: Router = express.Router()
 
@@ -17,7 +19,7 @@ router.get("/", async (_req, res) => {
 })
 
 router.post("/bucket", async (_req, res) => {
-    const originalBuffer = readFileSync("src/features/debug/router/smaple.jpeg")
+    const originalBuffer = readFileSync("src/features/debug/router/sample.jpeg")
     const thumbnailBuffer = await sharp(originalBuffer)
         .resize({
             width: 200, // Target width in pixels
@@ -51,6 +53,34 @@ router.post("/bucket", async (_req, res) => {
     console.log({ originalResponse, thumbnailResponse })
 
     res.status(200).send("---- bucket testing")
+})
+router.post("/bucket/presigned", async (_req, res) => {
+    const originalBuffer = readFileSync("src/features/debug/router/sample.jpeg")
+    const thumbnailBuffer = await sharp(originalBuffer)
+        .resize({
+            width: 200, // Target width in pixels
+            height: 200, // Target height in pixels
+            fit: "cover", // Crops the image to match the aspect ratio exactly
+            position: "center", // Focuses the crop on the center of the image
+        })
+        .toFormat("jpeg", { quality: 80 }) // Compresses and optimizes file size
+        .toBuffer()
+
+    const filename = `sample__${Date.now()}`
+
+    const command = new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: `thumbnails/${filename}`,
+        ContentType: "image/jpeg",
+    })
+    const presignedUrl = await getSignedUrl(s3Client, command, {
+        expiresIn: 180,
+    })
+    const response = await axios.put(presignedUrl, thumbnailBuffer)
+
+    console.log({ data: response.data })
+
+    res.status(200).json({ data: response.data })
 })
 router.get("/bucket/:filename", async (req, res) => {
     const filename = String(req.params.filename)
