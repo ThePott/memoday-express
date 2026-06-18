@@ -19,7 +19,7 @@ export const memory = pgTable(
         average_color: varchar().notNull(), // NOTE: HEXCODE
         app_user_id: bigint({ mode: "bigint" })
             .notNull()
-            .references(() => app_user.id),
+            .references(() => app_user.id, { onDelete: "cascade" }),
     },
     (table) => [unique().on(table.date, table.app_user_id)],
 )
