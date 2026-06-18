@@ -1,6 +1,6 @@
 import express, { type Router } from "express"
 import { eq, gte, lt } from "drizzle-orm"
-import { createInsertSchema } from "drizzle-orm/zod"
+import { createInsertSchema } from "drizzle-zod"
 import s3Client from "../../shared/config/s3-client.js"
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3"
 import { BUCKET_NAME } from "../../shared/config/env-var.js"
@@ -9,6 +9,7 @@ import db from "../../shared/config/db.js"
 import { makeSerializable } from "../../shared/utils/make-serializable.js"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import z from "zod"
+import { extractAppUserId } from "../../shared/config/decode-jwt-in-headers.js"
 
 const PRESIGNED_URL_EXPRIRES_IN = 180 // NOTE: 5 min
 
@@ -30,7 +31,8 @@ const makeCommand = (method: z.infer<typeof MethodSchema>, prefix: "originals" |
             })
     }
 }
-// stage 1: presigned url
+
+// TODO: remove this and return presigned url at once
 memoryRouter.get("/presigned-url/:method/:filename", async (req, res) => {
     console.log("---- presigned called")
     const schema = z.object({
@@ -84,12 +86,13 @@ memoryRouter.get("/presigned-url/:method/:filename", async (req, res) => {
 
     res.status(200).json({ originalPresignedUrl, thumbnailPresignedUrl })
 })
+// MUST REMOVE ABOVE
 
-// stage 2: user directly put image to bucket
-// stage 3: user post memory info
+// MUST COMBINE THIS AND ABOVE
 memoryRouter.post("/", async (req, res) => {
+    const { app_user_id } = extractAppUserId(req.headers)
     const schema = createInsertSchema(memory)
-    const parseResult = schema.safeParse(req.body)
+    const parseResult = schema.safeParse({ ...req.body, app_user_id })
     if (parseResult.error) {
         console.log({ error: parseResult.error })
         console.log("---- safe parsing failed")
@@ -104,9 +107,13 @@ memoryRouter.post("/", async (req, res) => {
 })
 
 memoryRouter.get("/day/:ymd", async (req, res) => {
-    const ymd = String(req.params.ymd)
+    const { app_user_id } = extractAppUserId(req.headers)
 
-    const selectResult = await db.select().from(memory).where(eq(memory.date, ymd))
+    const ymd = String(req.params.ymd)
+    const selectResult = await db
+        .select()
+        .from(memory)
+        .where(eq(memory.app_user_id, app_user_id) && eq(memory.date, ymd))
     if (selectResult.length === 0 || !selectResult[0]) {
         console.log({ error: "MEMORY NOT FOUND BY DATE" })
         res.status(404).json({ code: "MEMORY NOT FOUND BY DATE" })
@@ -129,6 +136,8 @@ const findMonthStartEnd = (ym: string): [string, string] => {
     return [start, end]
 }
 memoryRouter.get("/month/:ym", async (req, res) => {
+    const { app_user_id } = extractAppUserId(req.headers)
+
     const ymSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "must be yyyy-mm")
     const parseResult = ymSchema.safeParse(req.params.ym)
     if (parseResult.error) {
@@ -142,7 +151,7 @@ memoryRouter.get("/month/:ym", async (req, res) => {
     const selectResult = await db
         .select()
         .from(memory)
-        .where(gte(memory.date, start) && lt(memory.date, end))
+        .where(eq(memory.app_user_id, app_user_id) && gte(memory.date, start) && lt(memory.date, end))
     if (selectResult.length === 0) {
         console.log({ error: "MEMORY NOT FOUND BY YYYY-MM" })
         res.status(404).json({ code: "MEMORY NOT FOUND BY YYYY-MM" })

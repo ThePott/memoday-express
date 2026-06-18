@@ -1,9 +1,13 @@
 import express, { type Router } from "express"
+import { eq } from "drizzle-orm"
+import { createInsertSchema } from "drizzle-zod"
 import z from "zod"
 import jwt, { type Jwt, type JwtPayload } from "jsonwebtoken"
 import axios from "axios"
 import crypto from "node:crypto"
 import { ACCESS_TOKEN_SECRET } from "../../shared/config/env-var.js"
+import db from "../../shared/config/db.js"
+import { app_user, memory } from "../../db/schema.js"
 
 const loginRouter: Router = express.Router()
 
@@ -46,6 +50,7 @@ const getMatchingKey = async (decodedJwt: Jwt): Promise<JWK | null> => {
 // TODO: need to throw for errors, then middleware catches it and handle it?
 // Not sure central error management is good
 // it sucks up all error, so error location become vague
+const appUserInsertSchema = createInsertSchema(app_user)
 loginRouter.post("/apple/validate", async (req, res) => {
     const schema = z.object({ appleIdentityTokenString: z.string() })
     const parseResult = schema.safeParse(req.body)
@@ -72,6 +77,7 @@ loginRouter.post("/apple/validate", async (req, res) => {
     const payload = decodedJwt.payload as JwtPayload
     if (payload.iss !== "https://appleid.apple.com" || payload.aud !== "com.haheungju.memoday") {
         res.status(401).json({ code: "INVALID_ISS_OR_AUD" })
+
         return
     }
 
@@ -87,6 +93,28 @@ loginRouter.post("/apple/validate", async (req, res) => {
     const accessToken = jwt.sign({ provider: "apple", identity: appleIdentity }, ACCESS_TOKEN_SECRET, {
         expiresIn: ACCESS_TOKEN_AGE,
     })
+
+    const identity = decodedJwt.payload.sub
+    if (typeof identity !== "string" || !identity) {
+        res.status(401).json({ code: "INVALID_IDENTITY_FROM_JWT" })
+        return
+    }
+    const newUser: z.infer<typeof appUserInsertSchema> = {
+        provider: "apple",
+        identity: identity,
+    }
+
+    const selectResult = await db
+        .select()
+        .from(app_user)
+        .where(eq(app_user.provider, newUser.provider) && eq(app_user.identity, newUser.identity))
+
+    if (selectResult.length > 0) {
+        res.status(200).json({ accessToken })
+        return
+    }
+
+    await db.insert(app_user).values(newUser)
     res.status(200).json({ accessToken })
 })
 
