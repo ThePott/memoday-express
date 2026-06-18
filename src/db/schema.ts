@@ -1,4 +1,12 @@
-import { pgTable, varchar, date, bigint } from "drizzle-orm/pg-core"
+import { pgTable, varchar, date, bigint, pgEnum } from "drizzle-orm/pg-core"
+
+export const login_provider = pgEnum("login_provider", ["apple"])
+
+export const app_user = pgTable("app_user", {
+    id: bigint({ mode: "bigint" }).primaryKey().generatedAlwaysAsIdentity(),
+    provider: login_provider().notNull(),
+    identity: varchar().notNull(),
+})
 
 export const memory = pgTable("memory", {
     id: bigint({ mode: "bigint" }).primaryKey().generatedAlwaysAsIdentity(),
