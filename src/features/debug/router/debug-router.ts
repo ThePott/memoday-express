@@ -77,10 +77,8 @@ router.post("/bucket/presigned", async (_req, res) => {
         expiresIn: 180,
     })
     const response = await axios.put(presignedUrl, thumbnailBuffer)
-
-    console.log({ data: response.data })
-
-    res.status(200).json({ data: response.data })
+    console.log({ status: response.status, etag: response.headers.etag })
+    res.status(200).json({ success: true, status: response.status, etag: response.headers.etag })
 })
 router.get("/bucket/:filename", async (req, res) => {
     const filename = String(req.params.filename)

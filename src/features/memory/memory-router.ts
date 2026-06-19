@@ -38,8 +38,15 @@ memoryRouter.post("/", async (req, res) => {
         const schema = createInsertSchema(memory)
         console.log({ messedUpBody: req.body })
         const parseResult = schema.parse({ ...req.body, app_user_id })
-        const { filename } = parseResult
-        await db.insert(memory).values(parseResult) // NOTE: no need for return
+        const { filename, date, app_user_id: _, ...rest } = parseResult
+        await db
+            .insert(memory)
+            .values(parseResult) // NOTE: no need for return
+            // TODO: 이것보다 더 복잡하다. 만약 존재하면 filename 같은지 확인 -> 다르면 이전 건 삭제해야 함
+            .onConflictDoUpdate({
+                target: [memory.app_user_id, memory.date],
+                set: { ...rest, filename },
+            })
 
         const commandOriginal = makeCommand("put", "originals", filename)
         const commandThumbnail = makeCommand("put", "thumbnails", filename)
