@@ -103,8 +103,6 @@ memoryRouter.get("/day/:ymd", async (req, res) => {
         console.log({ error: "MEMORY NOT FOUND BY DATE" })
         res.status(200).json({
             result: null,
-            originalPresignedUrl: null,
-            thumbnailPresignedUrl: null,
             prevDate: prevResult[0]?.date ?? null,
             nextDate: nextResult[0]?.date ?? null,
         })
@@ -126,9 +124,7 @@ memoryRouter.get("/day/:ymd", async (req, res) => {
     ])
 
     const serializable = makeSerializable({
-        result,
-        originalPresignedUrl,
-        thumbnailPresignedUrl,
+        result: { ...result, originalPresignedUrl, thumbnailPresignedUrl },
         prevDate: prevResult[0]?.date ?? null,
         nextDate: nextResult[0]?.date ?? null,
     })
