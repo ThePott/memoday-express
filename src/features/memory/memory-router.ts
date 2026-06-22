@@ -70,8 +70,8 @@ memoryRouter.post("/", async (req, res) => {
 })
 
 memoryRouter.get("/day/:ymd", async (req, res) => {
-    // const { app_user_id } = extractAppUserId(req.headers)
-    const app_user_id = BigInt(1)
+    const { app_user_id } = extractAppUserId(req.headers)
+    // const app_user_id = BigInt(1)
 
     const ymd = String(req.params.ymd)
 
@@ -101,7 +101,13 @@ memoryRouter.get("/day/:ymd", async (req, res) => {
 
     if (exactResult.length === 0 || !exactResult[0]) {
         console.log({ error: "MEMORY NOT FOUND BY DATE" })
-        res.status(404).json({ code: "MEMORY NOT FOUND BY DATE" })
+        res.status(200).json({
+            result: null,
+            originalPresignedUrl: null,
+            thumbnailPresignedUrl: null,
+            prevDate: prevResult[0]?.date ?? null,
+            nextDate: nextResult[0]?.date ?? null,
+        })
         return
     }
     const result = exactResult[0]
@@ -120,7 +126,7 @@ memoryRouter.get("/day/:ymd", async (req, res) => {
     ])
 
     const serializable = makeSerializable({
-        ...result,
+        result,
         originalPresignedUrl,
         thumbnailPresignedUrl,
         prevDate: prevResult[0]?.date ?? null,
