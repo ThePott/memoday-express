@@ -75,16 +75,16 @@ memoryRouter.get("/day/:ymd", async (req, res) => {
 
     const ymd = String(req.params.ymd)
 
-    const exactResultPromise = db
-        .select()
-        .from(memory)
-        .where(eq(memory.app_user_id, app_user_id) && eq(memory.date, ymd))
-        .orderBy(desc(memory.date))
-        .limit(1)
     const prevResultPromise = db
         .select()
         .from(memory)
         .where(eq(memory.app_user_id, app_user_id) && lt(memory.date, ymd))
+        .orderBy(desc(memory.date))
+        .limit(1)
+    const exactResultPromise = db
+        .select()
+        .from(memory)
+        .where(eq(memory.app_user_id, app_user_id) && eq(memory.date, ymd))
         .limit(1)
     const nextResultPromise = db
         .select()
@@ -182,14 +182,6 @@ memoryRouter.get("/month/:ym", async (req, res) => {
 const bodySchemaWithoutImage = z.object({
     front_message: z.string().nullish(),
     rear_message: z.string().nullish(),
-})
-
-const bodySchemaIncludingImage = z.object({
-    front_message: z.string().nullable(),
-    rear_message: z.string().nullable(),
-    filenameOld: z.string(),
-    filenameNew: z.string(),
-    average_color: z.string(),
 })
 
 memoryRouter.patch("/:id", async (req, res) => {
