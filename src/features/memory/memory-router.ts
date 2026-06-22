@@ -179,4 +179,41 @@ memoryRouter.get("/month/:ym", async (req, res) => {
     res.status(200).json(serializable)
 })
 
+const bodySchemaWithoutImage = z.object({
+    front_message: z.string().nullable(),
+    rear_message: z.string().nullable(),
+})
+
+const bodySchemaIncludingImage = z.object({
+    front_message: z.string().nullable(),
+    rear_message: z.string().nullable(),
+    filenameOld: z.string(),
+    filenameNew: z.string(),
+    average_color: z.string(),
+})
+
+memoryRouter.patch("/:id", async (req, res) => {
+    const { app_user_id } = extractAppUserId(req.headers)
+    const is_including_image = req.query.is_including_image === "true"
+    const memory_id = BigInt(req.params.id)
+
+    // NOTE: without image
+    if (!is_including_image) {
+        const { front_message, rear_message } = bodySchemaWithoutImage.parse(req.body)
+        const patchResult = await db
+            .update(memory)
+            .set({
+                ...(front_message ? { front_message } : null),
+                ...(rear_message ? { rear_message } : null),
+            })
+            .where(eq(memory.app_user_id, app_user_id) && eq(memory.id, memory_id))
+        console.log({ patchResult })
+        res.status(200).json({ patchResult })
+        return
+    }
+    // NOTE: including image
+
+    res.status(200).json({ is_including_image })
+})
+
 export default memoryRouter
