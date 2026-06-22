@@ -180,8 +180,8 @@ memoryRouter.get("/month/:ym", async (req, res) => {
 })
 
 const bodySchemaWithoutImage = z.object({
-    front_message: z.string().nullable(),
-    rear_message: z.string().nullable(),
+    front_message: z.string().nullish(),
+    rear_message: z.string().nullish(),
 })
 
 const bodySchemaIncludingImage = z.object({
