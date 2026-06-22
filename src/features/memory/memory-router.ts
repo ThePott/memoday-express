@@ -194,26 +194,31 @@ const bodySchemaIncludingImage = z.object({
 
 memoryRouter.patch("/:id", async (req, res) => {
     const { app_user_id } = extractAppUserId(req.headers)
-    const is_including_image = req.query.is_including_image === "true"
     const memory_id = BigInt(req.params.id)
 
-    // NOTE: without image
-    if (!is_including_image) {
-        const { front_message, rear_message } = bodySchemaWithoutImage.parse(req.body)
-        const patchResult = await db
-            .update(memory)
-            .set({
-                ...(front_message ? { front_message } : null),
-                ...(rear_message ? { rear_message } : null),
-            })
-            .where(eq(memory.app_user_id, app_user_id) && eq(memory.id, memory_id))
-        console.log({ patchResult })
-        res.status(200).json({ patchResult })
-        return
-    }
-    // NOTE: including image
+    const { front_message, rear_message } = bodySchemaWithoutImage.parse(req.body)
+    const patchResult = await db
+        .update(memory)
+        .set({
+            ...(front_message ? { front_message } : null),
+            ...(rear_message ? { rear_message } : null),
+        })
+        .where(eq(memory.app_user_id, app_user_id) && eq(memory.id, memory_id))
+        .returning()
+    const serailizable = makeSerializable(patchResult)
+    res.status(200).json(serailizable)
+})
 
-    res.status(200).json({ is_including_image })
+memoryRouter.delete("/:id", async (req, res) => {
+    const { app_user_id } = extractAppUserId(req.headers)
+    const memory_id = BigInt(req.params.id)
+
+    const deleteResult = await db
+        .delete(memory)
+        .where(eq(memory.app_user_id, app_user_id) && eq(memory.id, memory_id))
+        .returning()
+    const serializable = makeSerializable(deleteResult)
+    res.status(200).json(serializable)
 })
 
 export default memoryRouter
