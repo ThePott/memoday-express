@@ -1,5 +1,5 @@
 import express, { type Router } from "express"
-import { eq, gte, lt, gt } from "drizzle-orm"
+import { eq, gte, lt, gt, desc, asc } from "drizzle-orm"
 import { createInsertSchema } from "drizzle-zod"
 import s3Client from "../../shared/config/s3-client.js"
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3"
@@ -79,6 +79,7 @@ memoryRouter.get("/day/:ymd", async (req, res) => {
         .select()
         .from(memory)
         .where(eq(memory.app_user_id, app_user_id) && eq(memory.date, ymd))
+        .orderBy(desc(memory.date))
         .limit(1)
     const prevResultPromise = db
         .select()
@@ -89,6 +90,7 @@ memoryRouter.get("/day/:ymd", async (req, res) => {
         .select()
         .from(memory)
         .where(eq(memory.app_user_id, app_user_id) && gt(memory.date, ymd))
+        .orderBy(asc(memory.date))
         .limit(1)
 
     const [prevResult, exactResult, nextResult] = await Promise.all([
